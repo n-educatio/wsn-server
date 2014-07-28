@@ -17,7 +17,7 @@
         "symfony/dependency-injection": "~2.5",
         "symfony/config": "~2.5",
         "symfony/yaml": "~2.5",
-        "cboden/Ratchet": "0.4.*",   
+        "cboden/Ratchet": "v0.3.2",   
         "react/zmq": "dev-psr4"
     }
 }
