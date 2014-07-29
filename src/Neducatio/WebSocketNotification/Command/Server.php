@@ -11,10 +11,12 @@ use Symfony\Component\Console\Command\Command,
 use Ratchet\Http\HttpServer,
     Ratchet\Server\IoServer,
     Ratchet\Wamp\WampServer,
-    Ratchet\WebSocket\WsServer;
+    Ratchet\WebSocket\WsServer,
+    Ratchet\Session\SessionProvider;
 use React\EventLoop\Factory,
     React\Socket\Server as SocketServer,
     React\ZMQ\Context;
+use ZMQ;
 use Neducatio\WebSocketNotification\Server as RTNServer;
 
 /**
@@ -28,10 +30,14 @@ class Server extends Command
   protected $container;
 
   /**
-   *
    * @var logger
    */
   protected $logger;
+
+  /**
+   * @var \SessionHandlerInterface
+   */
+  protected $sessionHandler;
 
   /**
    * Set container
@@ -69,25 +75,27 @@ class Server extends Command
   {
     $configuration = $this->processConfiguration($input);
 
-    $loop      = Factory::create();
-    $rtnServer = new RTNServer($this->logger);
-    $context   = new Context($loop);
-    $pull      = $context->getSocket(\ZMQ::SOCKET_PULL);
-    $pull->bind($pullAddress = sprintf('tcp://%s:%d', $configuration['host'], (int) $configuration['port']));
-    $pull->on('message', array($rtnServer, 'onServerPush'));
+    $loop = Factory::create();
+    $webSocketNotificationServer = new RTNServer($this->logger);
+    $context = new Context($loop);
+    $pullServer = $context->getSocket(ZMQ::SOCKET_PULL);
+    $pullServer->bind($pullAddress = sprintf('tcp://%s:%d', $configuration['host'], (int) $configuration['port']));
+    $pullServer->on('message', [$webSocketNotificationServer, 'onServerPush']);
 
-    $webSocket = new SocketServer($loop);
-    $webSocket->listen((int) $configuration['websocket-port'], '0.0.0.0');
+    $socketServer = new SocketServer($loop);
+    $socketServer->listen((int) $configuration['websocket-port'], '0.0.0.0');
+
+    $wampServer = new WampServer($webSocketNotificationServer);
 
     new IoServer(
       new HttpServer(
         new WsServer(
-          new WampServer(
-            $rtnServer
-          )
+          is_null($this->sessionHandler)
+            ? $wampServer
+            : new SessionProvider($wampServer, $this->sessionHandler)
         )
       ),
-      $webSocket
+      $socketServer
     );
 
     $output->writeln("Pull server is running on <info>$pullAddress</info>");
@@ -95,10 +103,6 @@ class Server extends Command
     $loop->run();
   }
 
-  protected function getSessionHandler()
-  {
-    return $this->container->get('session_handler');
-  }
 
   protected function processConfiguration($commandLineInput)
   {
@@ -107,6 +111,7 @@ class Server extends Command
     }
 
     $this->logger = $this->container->get('logger');
+    $this->sessionHandler = $this->container->get('session_handler');
 
     $config = [];
 

@@ -20,6 +20,7 @@ class Server implements WampServerInterface
   public function onOpen(ConnectionInterface $connection)
   {
     $this->log('INFO', 'new connection has been established');
+
   }
 
   public function onClose(ConnectionInterface $connection)
@@ -46,6 +47,13 @@ class Server implements WampServerInterface
 
   public function onSubscribe(ConnectionInterface $connection, $channel)
   {
+    if (!is_array($availableChannels = $connection->Session->get('wsn_server_channels')) || !in_array($channel->getId(), $availableChannels))
+    {
+      $connection->close();
+
+      return;
+    }
+
     $this->log('DEBUG', sprintf('channel %s has been subscribed', $channel));
 
     if (!array_key_exists($channel->getId(), $this->channels)) {
