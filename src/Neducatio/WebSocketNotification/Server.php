@@ -9,20 +9,31 @@ use Ratchet\Wamp\WampServerInterface;
  */
 class Server implements WampServerInterface
 {
-  protected $channels = array();
+  protected $channels;
+
   protected $logger;
 
+  /**
+   *
+   * @param type $logger
+   */
   public function __construct($logger = null)
   {
+    $this->channels = [];
     $this->logger = $logger;
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function onOpen(ConnectionInterface $connection)
   {
     $this->log('INFO', 'new connection has been established');
-
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function onClose(ConnectionInterface $connection)
   {
     $this->log('INFO', 'one connection has been closed');
@@ -33,22 +44,30 @@ class Server implements WampServerInterface
     }
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function onCall(ConnectionInterface $connection, $id, $channel, array $params)
   {
     // RPC via websocket is not allowed. Call error!
     $connection->callError($id, $channel, 'You are not allowed to make calls')->close();
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function onPublish(ConnectionInterface $connection, $channel, $event, array $exclude, array $eligible)
   {
     // Publishing via websocket is not allowed. Close connection immediately!
     $connection->close();
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function onSubscribe(ConnectionInterface $connection, $channel)
   {
-    if (!is_array($availableChannels = $connection->Session->get('wsn_server_channels')) || !in_array($channel->getId(), $availableChannels))
-    {
+    if (!$this->isAllowedToSubscribeChannel($connection, $channel)) {
       $connection->close();
 
       return;
@@ -61,20 +80,33 @@ class Server implements WampServerInterface
     }
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function onUnSubscribe(ConnectionInterface $connection, $channel)
   {
     $this->log('DEBUG', sprintf('channel %s has been unsubscribed', $channel));
 
     if (0 === $channel->count()) {
+      $this->log('DEBUG', sprintf('%s channel is now unsubscribed', $channel));
       unset($this->channels[$channel->getId()]);
-      $this->log('DEBUG', sprintf('%s channel is not subscribed anymore', $channel));
     }
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function onError(ConnectionInterface $conn, \Exception $e)
   {
   }
 
+  /**
+   * On Server Push Callback
+   *
+   * @param  string $JSONPayload jsonfied array with channel and data keys
+   *
+   * @return mixed
+   */
   public function onServerPush($JSONPayload)
   {
     try {
@@ -102,6 +134,12 @@ class Server implements WampServerInterface
     }
   }
 
+  /**
+   * Write message to logger (if available)
+   *
+   * @param string $level
+   * @param string $message
+   */
   protected function log($level, $message)
   {
     if (null !== $this->logger) {
@@ -109,6 +147,29 @@ class Server implements WampServerInterface
     }
   }
 
+  /**
+   * Answers whether connection is allowed to subscribe given channel
+   *
+   * @param string $channel
+   *
+   * @return boolean
+   */
+  protected function isAllowedToSubscribeChannel(ConnectionInterface $connection, $channel)
+  {
+    if (isset($connection->Session) && (!is_array($availableChannels = $connection->Session->get('wsn_server_channels')) || !in_array($channel->getId(), $availableChannels))) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Answers whether payload is valid
+   *
+   * @param array $payload
+   *
+   * @return boolean
+   */
   private function isValid(array $payload)
   {
     $isValid = true;
