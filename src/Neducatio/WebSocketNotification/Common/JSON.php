@@ -4,10 +4,10 @@ namespace Neducatio\WebSocketNotification\Common;
 /**
  * JSON
  */
-class JSON {
-
+class JSON
+{
   /**
-   * Serialize to JSON format
+   * Serialize to JSON
    *
    * @param type $data
    *
@@ -22,7 +22,7 @@ class JSON {
   }
 
   /**
-   * Deserialize JSON format
+   * Deserialize JSON
    *
    * @param string  $json
    * @param boolean $assoc
