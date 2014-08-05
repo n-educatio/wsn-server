@@ -6,7 +6,8 @@
             "email": "kubiernacki@gmail.com"
         }
     ],
-    "minimum-stability" : "dev",    
+    "minimum-stability" : "dev",
+    "prefer-stable" : true,
     "autoload": {
         "psr-0": {            
             "Neducatio": "src"
@@ -19,5 +20,9 @@
         "symfony/yaml": "~2.5",
         "cboden/Ratchet": "v0.3.2",   
         "react/zmq": "dev-psr4"
+    },
+    "require-dev": {
+        "mockery/mockery": "0.9.1",
+        "phpunit/phpunit": "4.1.*"
     }
 }
