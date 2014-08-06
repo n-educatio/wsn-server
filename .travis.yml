@@ -7,6 +7,8 @@ before_script:
     - echo "extension=zmq.so" | sudo tee -a ~/.phpenv/versions/$(phpenv version-name)/etc/php.ini
     - composer install --dev
 
+script:
+    - ./phpunit
     
 
 
