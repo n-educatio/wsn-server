@@ -2,8 +2,8 @@
     "name": "neducatio/wsn-server",
     "authors": [
         {
-            "name": "kuba",
-            "email": "kubiernacki@gmail.com"
+            "name": "Jakub Biernacki",
+            "email": "kbiernacki@n-educatio.pl"
         }
     ],
     "minimum-stability" : "dev",
@@ -14,6 +14,7 @@
         }
     },   
     "require": {
+        "php": ">=5.4",
         "symfony/console": "~2.5",
         "symfony/dependency-injection": "~2.5",
         "symfony/config": "~2.5",
