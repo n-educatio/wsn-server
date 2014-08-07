@@ -17,7 +17,7 @@ use React\EventLoop\Factory,
     React\Socket\Server as SocketServer,
     React\ZMQ\Context;
 use ZMQ;
-use Neducatio\WebSocketNotification\Server as RTNServer;
+use Neducatio\WebSocketNotification\Server as WSNServer;
 
 /**
  * Server
@@ -76,7 +76,7 @@ class Server extends Command
     $configuration = $this->processConfiguration($input);
 
     $loop = Factory::create();
-    $webSocketNotificationServer = new RTNServer($this->logger);
+    $webSocketNotificationServer = new WSNServer($this->logger);
     $context = new Context($loop);
     $pullServer = $context->getSocket(ZMQ::SOCKET_PULL);
     $pullServer->bind($pullAddress = sprintf('tcp://%s:%d', $configuration['host'], (int) $configuration['port']));
