@@ -1,7 +1,7 @@
 WebSocket Notification Server
 ==========
 
-Built on top of [Rachet](http://socketo.me), [ZMQ](http://zeromq.org) library and [Symfony2](http://symfony.com) components. This is just implementation of example found in ratchet [documentation](http://socketo.me/docs/push).
+Built on top of [Rachet](http://socketo.me), [ZMQ](http://zeromq.org) library and [Symfony2](http://symfony.com) components. This is based on [push integration](http://socketo.me/docs/push) tutorial found in Ratchet docs.
 
 #### Requirements
 It requires ZMQ PHP extension to be installed (you can install it via PECL or compile on your own). Other dependencies are handled by composer.
