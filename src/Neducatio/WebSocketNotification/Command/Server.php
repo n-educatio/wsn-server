@@ -110,8 +110,8 @@ class Server extends Command
       throw new \RuntimeException('No container was set, provide one.');
     }
 
-    $this->logger = $this->container->get('logger');
-    $this->sessionHandler = $this->container->get('session_handler');
+    $this->logger = $this->container->get('logger', ContainerInterface::NULL_ON_INVALID_REFERENCE);
+    $this->sessionHandler = $this->container->get('session_handler', ContainerInterface::NULL_ON_INVALID_REFERENCE);
 
     $config = [];
 
