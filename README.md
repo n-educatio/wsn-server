@@ -1,5 +1,6 @@
 WebSocket Notification Server
 ==========
+![alt travis](https://travis-ci.org/n-educatio/wsn-server.svg?branch=master)
 
 Built on top of [Rachet](http://socketo.me), [ZMQ](http://zeromq.org) library and [Symfony2](http://symfony.com) components. This is based on [push integration](http://socketo.me/docs/push) tutorial found in Ratchet docs.
 
