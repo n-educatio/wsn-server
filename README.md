@@ -30,10 +30,10 @@ php bin/wsn-server.php help neducatio:wsn-server:run
 
 ```
 ##### Subscribe a channel (topic)
-Checkout [push integration](http://socketo.me/docs/push) tutoral.
+Check out [push integration](http://socketo.me/docs/push) tutoral.
 
 ##### Push from your web app
-Checkout [push integration](http://socketo.me/docs/push) tutorial. For Symfony2 integration use [wsn-server-bundle](https://github.com/n-educatio/wsn-server-bundle).
+Check out [push integration](http://socketo.me/docs/push) tutorial. For Symfony2 integration use [wsn-server-bundle](https://github.com/n-educatio/wsn-server-bundle).
 
 ### Configuration
 
