@@ -10,13 +10,14 @@ use Symfony\Component\Console\Command\Command,
     Symfony\Component\DependencyInjection\ContainerInterface;
 use Ratchet\Http\HttpServer,
     Ratchet\Server\IoServer,
-    Ratchet\Wamp\WampServer,
+    //Ratchet\Wamp\WampServer,
     Ratchet\WebSocket\WsServer,
     Ratchet\Session\SessionProvider;
 use React\EventLoop\Factory,
     React\Socket\Server as SocketServer,
     React\ZMQ\Context;
 use ZMQ;
+use Neducatio\WebSocketNotification\Wamp\WampServer;
 use Neducatio\WebSocketNotification\Server as WSNServer;
 
 /**
@@ -78,9 +79,14 @@ class Server extends Command
     $loop = Factory::create();
     $webSocketNotificationServer = new WSNServer($this->logger);
     $context = new Context($loop);
-    $pullServer = $context->getSocket(ZMQ::SOCKET_PULL);
-    $pullServer->bind($pullAddress = sprintf('tcp://%s:%d', $configuration['host'], (int) $configuration['port']));
-    $pullServer->on('message', [$webSocketNotificationServer, 'onServerPush']);
+
+    $notificationSock = $context->getSocket(ZMQ::SOCKET_PULL);
+    $notificationSock->bind($notificationSockAddr = sprintf('tcp://%s:%d', $configuration['host'], (int) $configuration['port']));
+    $notificationSock->on('message', [$webSocketNotificationServer, 'onServerPush']);
+
+    $managementSock = $context->getSocket(ZMQ::SOCKET_PULL);
+    $managementSock->bind($managementSockAddr = sprintf('tcp://%s:%d', $configuration['host'], (int) $configuration['port'] + 1));
+    $managementSock->on('message', [$webSocketNotificationServer, 'channelManagement']);
 
     $socketServer = new SocketServer($loop);
     $socketServer->listen((int) $configuration['websocket-port'], '0.0.0.0');
@@ -98,11 +104,11 @@ class Server extends Command
       $socketServer
     );
 
-    $output->writeln("Pull server is running on <info>$pullAddress</info>");
-    $output->writeln("WebSocket server is listening on port <info>${configuration['websocket-port']}</info>");
+    $output->writeln(sprintf("[%s][INFO]\tmessage socket <info>%s</info>", date('Y-d-m H:i:s'), $notificationSockAddr));
+    $output->writeln(sprintf("[%s][INFO]\tmanagement socket <info>%s</info>", date('Y-d-m H:i:s'), $managementSockAddr));
+    $output->writeln(sprintf("[%s][INFO]\tweb socket server is listening on <info>%s</info>", date('Y-d-m H:i:s'), $configuration['websocket-port']));
     $loop->run();
   }
-
 
   protected function processConfiguration($commandLineInput)
   {
