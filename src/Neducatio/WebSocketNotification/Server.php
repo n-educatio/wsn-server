@@ -3,14 +3,31 @@ namespace Neducatio\WebSocketNotification;
 
 use Ratchet\ConnectionInterface;
 use Ratchet\Wamp\WampServerInterface;
+use Ratchet\Wamp\TopicManager as ChannelManager;
 
 /**
  * Websocket Notification Server
  */
 class Server implements WampServerInterface
 {
+  /**
+   * @var ChannelManager
+   */
+  protected $channelManager;
+
+  /**
+   * @var \Ratchet\Wamp\Topic[]
+   */
   protected $channels;
 
+  /**
+   * @var Sunscriber[]
+   */
+  protected $subscribers;
+
+  /**
+   * @var  \Neducatio\WebSocketNotification\Common\Loggable
+   */
   protected $logger;
 
   /**
@@ -20,6 +37,7 @@ class Server implements WampServerInterface
   public function __construct($logger = null)
   {
     $this->channels = [];
+    $this->subscribers = [];
     $this->logger = $logger;
   }
 
@@ -28,7 +46,17 @@ class Server implements WampServerInterface
    */
   public function onOpen(ConnectionInterface $connection)
   {
-    $this->log('INFO', 'new connection has been established');
+    $this->log('INFO', sprintf('connection #%d has been established', $connection->resourceId));
+
+    if (isset($connection->Session)) {
+      /**
+       * @var Subscriber
+       */
+      $this->f = $connection;
+      $subscriber = $connection->Subscriber = $connection->Session->get('wsn_server_subscriber');
+      $subscriber->setConnection($connection);
+      $this->subscribers[(string) $subscriber] = $subscriber;
+    }
   }
 
   /**
@@ -36,11 +64,15 @@ class Server implements WampServerInterface
    */
   public function onClose(ConnectionInterface $connection)
   {
-    $this->log('INFO', 'one connection has been closed');
+    $this->log('INFO', sprintf('connection #%d has been closed', $connection->resourceId));
 
     foreach($connection->WAMP->subscriptions as $channel) {
       $channel->remove($connection);
       $this->onUnSubscribe($connection, $channel);
+    }
+
+    if (isset($connection->Subscriber)) {
+      unset($this->subscribers[(string) $connection->Subscriber], $connection->Subscriber);
     }
   }
 
@@ -67,13 +99,13 @@ class Server implements WampServerInterface
    */
   public function onSubscribe(ConnectionInterface $connection, $channel)
   {
-    if (!$this->isAllowedToSubscribeChannel($connection, $channel)) {
+    if (isset($connection->Subscriber) && !$connection->Subscriber->isChannelGranted($channel)) {
       $connection->close();
 
       return;
     }
 
-    $this->log('DEBUG', sprintf('channel %s has been subscribed', $channel));
+    $this->log('INFO', sprintf('connection #%s has subscribed %s channel', $connection->resourceId, $channel));
 
     if (!array_key_exists($channel->getId(), $this->channels)) {
       $this->channels[$channel->getId()] = $channel;
@@ -85,10 +117,10 @@ class Server implements WampServerInterface
    */
   public function onUnSubscribe(ConnectionInterface $connection, $channel)
   {
-    $this->log('DEBUG', sprintf('channel %s has been unsubscribed', $channel));
+    $this->log('INFO', sprintf('connection #%d has unsubscribed %s channel', $connection->resourceId, $channel));
 
     if (0 === $channel->count()) {
-      $this->log('DEBUG', sprintf('%s channel is now unsubscribed', $channel));
+      $this->log('INFO', sprintf('channel %s is now unsubscribed', $channel));
       unset($this->channels[$channel->getId()]);
     }
   }
@@ -112,14 +144,14 @@ class Server implements WampServerInterface
     try {
       $payload = Common\JSON::decode($JSONPayload);
 
-      if (!$this->isValid($payload)) {
+      if (!$this->isValid($payload, ['channel', 'data'])) {
         return;
       }
 
-      $this->log('DEBUG', sprintf('new entry has been published to %s channel', $payload['channel']));
+      $this->log('INFO', sprintf('new entry has been published to %s channel', $payload['channel']));
 
       if (!array_key_exists($payload['channel'], $this->channels)) {
-        $this->log('DEBUG', sprintf('there are no subscribers of %s channel', $payload['channel']));
+        $this->log('INFO', sprintf('there are no subscribers of %s channel', $payload['channel']));
 
         return;
       }
@@ -132,6 +164,46 @@ class Server implements WampServerInterface
     } catch (\InvalidArgumentException $ex) {
       $this->log('WARN', $ex->getMessage());
     }
+  }
+
+  /**
+   * Manage subscriber channel
+   *
+   * @param string $JSONPayload
+   */
+  public function channelManagement($JSONPayload)
+  {
+
+    try {
+      $payload = Common\JSON::decode($JSONPayload);
+
+      if (!$this->isValid($payload, ['channel', 'subscriber', 'action']) || !array_key_exists($subscriberId = $payload['subscriber'], $this->subscribers)) {
+        echo "It should not be printed!\n";
+        return;
+      }
+
+      $subscriber = $this->subscribers[$subscriberId];
+
+      if (Subscriber::CHANNEL_REVOKE === ($action = $payload['action'])) {
+        $this->logger->log('INFO', sprintf('channel %s has been revoked from connection #%s', $payload['channel'], $subscriber->getConnection()->resourceId));
+        $this->channelManager->onUnsubscribe($subscriber->getConnection(), $payload['channel']);
+      }
+      elseif (Subscriber::CHANNEL_GRANT) {
+        $this->logger->log('INFO', sprintf('channel %s has been granted to connect #%s', $payload['channel'], $subscriber->getConnection()->resourceId));
+        $this->channelManager->onSubscribe($subscriber->getConnection(), $payload['channel']);
+      }
+
+    } catch (\InvalidArgumentException $ex) {
+      $this->log('WARN', $ex->getMessage());
+    }
+  }
+
+  /**
+   * @param  $channelManager
+   */
+  public function setChannelManager($channelManager)
+  {
+    $this->channelManager = $channelManager;
   }
 
   /**
@@ -148,40 +220,21 @@ class Server implements WampServerInterface
   }
 
   /**
-   * Answers whether connection is allowed to subscribe given channel
-   *
-   * @param string $channel
-   *
-   * @return boolean
-   */
-  protected function isAllowedToSubscribeChannel(ConnectionInterface $connection, $channel)
-  {
-    if (isset($connection->Session) && (!is_array($availableChannels = $connection->Session->get('wsn_server_channels')) || !in_array($channel->getId(), $availableChannels))) {
-      return false;
-    }
-
-    return true;
-  }
-
-  /**
    * Answers whether payload is valid
    *
    * @param array $payload
    *
    * @return boolean
    */
-  private function isValid(array $payload)
+  private function isValid(array $payload, $mandatoryKeys)
   {
     $isValid = true;
 
-    if (!array_key_exists('channel', $payload)) {
-      $isValid = false;
-      $this->log('WARN', 'payload array lacks of channel key');
-    }
-
-    if (!array_key_exists('data', $payload)) {
-      $isValid = false;
-      $this->log('WARN', 'payload array lacks of data key');
+    foreach ($mandatoryKeys as $mandatoryKey) {
+      if (!array_key_exists($mandatoryKey, $payload)) {
+        $isValid = false;
+        $this->log('WARN', sprintf('payload array lacks of %s key', $mandatoryKey));
+      }
     }
 
     return $isValid;
