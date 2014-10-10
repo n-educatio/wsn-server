@@ -2,6 +2,7 @@
 namespace Neducatio\WebSocketNotification\Tests;
 
 use Neducatio\WebSocketNotification\Server;
+use Neducatio\WebSocketNotification\Subscriber;
 use Mockery as m;
 
 /**
@@ -9,8 +10,11 @@ use Mockery as m;
  */
 class ServerShould extends \PHPUnit_Framework_TestCase
 {
-  const ID         = 192;
-  const CHANNEL_ID = 'test_channel';
+  const ID            = 192;
+  const CHANNEL_ID    = 'test_channel';
+  const CONNECTION_ID = 193;
+  const SUBSCRIBER_ID = 194;
+
   /**
    * @var Server
    */
@@ -117,10 +121,12 @@ class ServerShould extends \PHPUnit_Framework_TestCase
    */
   public function unsubscribeChannel()
   {
-    $this->channel->shouldReceive('count')->andReturn(0);
-    $this->channel->shouldReceive('getId')->andReturn(self::CHANNEL_ID);
-
+    $this->channel->shouldReceive('count')->once()->andReturn(0);
+    $this->channel->shouldReceive('getId')->times(3)->andReturn(self::CHANNEL_ID);
+    $this->server->onSubscribe($this->connection, $this->channel);
+    $this->assertChannelExists(self::CHANNEL_ID);
     $this->server->onUnSubscribe($this->connection, $this->channel);
+    $this->assertChannelCollectionIsEmpty();
   }
 
   /**
@@ -141,8 +147,8 @@ class ServerShould extends \PHPUnit_Framework_TestCase
    */
   public function notBrodcastMessageWhenChanelIsNotSubscribed()
   {
-    $this->logger->shouldReceive('log')->with('DEBUG', sprintf('new entry has been published to %s channel', self::CHANNEL_ID))->once();
-    $this->logger->shouldReceive('log')->with('DEBUG', sprintf('there are no subscribers of %s channel', self::CHANNEL_ID))->once();
+    $this->logger->shouldReceive('log')->with('INFO', sprintf('new entry has been published to %s channel', self::CHANNEL_ID))->once();
+    $this->logger->shouldReceive('log')->with('INFO', sprintf('there are no subscribers of %s channel', self::CHANNEL_ID))->once();
     $this->server->onServerPush('{"channel" : "test_channel", "data" : []}');
   }
 
@@ -163,6 +169,7 @@ class ServerShould extends \PHPUnit_Framework_TestCase
   public function setUp()
   {
     $this->connection = m::mock('Ratchet\ConnectionInterface');
+    $this->connection->resourceId = self::CONNECTION_ID;
     $this->channel = m::mock('Ratchet\Wamp\Topic');
     $this->logger = m::mock('Neducatio\WebSocketNotification\Common\Loggable');
     $this->logger->shouldReceive('log')->byDefault();
@@ -204,16 +211,14 @@ class ServerShould extends \PHPUnit_Framework_TestCase
 
   private function channelIsNotInAvailableChannelsSet()
   {
-    $this->connection->Session = m::mock('Symfony\Component\HttpFoundation\Session\SessionInterface');
-    $this->connection->Session->shouldReceive('get')->andReturn([]);
+    $this->connection->Subscriber = new Subscriber(self::SUBSCRIBER_ID, []);
     $this->channel->shouldReceive('getId')->andReturn(self::CHANNEL_ID);
     $this->connection->shouldReceive('close')->once();
   }
 
   private function channelIsInAvailableChannelsSet()
   {
-    $this->connection->Session = m::mock('Symfony\Component\HttpFoundation\Session\SessionInterface');
-    $this->connection->Session->shouldReceive('get')->andReturn([self::CHANNEL_ID]);
+    $this->connection->Subscriber = new Subscriber(self::SUBSCRIBER_ID, [self::CHANNEL_ID]);
     $this->channel->shouldReceive('getId')->andReturn(self::CHANNEL_ID);
     $this->channel->shouldReceive('__toString')->andReturn(self::CHANNEL_ID);
     $this->connection->shouldReceive('close')->never();
@@ -226,7 +231,7 @@ class ServerShould extends \PHPUnit_Framework_TestCase
     $propertyReflection->setValue($this->server, [self::CHANNEL_ID => $this->channel]);
     $this->channel->shouldReceive('broadcast')->with('{"data":[]}')->once();
     $this->channel->shouldReceive('count')->andReturn(1);
-    $this->logger->shouldReceive('log')->with('DEBUG', sprintf('new entry has been published to %s channel', self::CHANNEL_ID))->once();
+    $this->logger->shouldReceive('log')->with('INFO', sprintf('new entry has been published to %s channel', self::CHANNEL_ID))->once();
     $this->logger->shouldReceive('log')->with('INFO', 'new entry has been sent to 1 subscriber')->once();
   }
 
