@@ -102,6 +102,8 @@ class Subscriber
   {
     if (false !== ($key = array_search($channelName, $this->grantedChannels))) {
       unset($this->grantedChannels[$key]);
+      // reset indexes
+      $this->grantedChannels = array_values($this->grantedChannels);
     }
   }
 
