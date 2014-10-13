@@ -178,7 +178,6 @@ class Server implements WampServerInterface
       $payload = Common\JSON::decode($JSONPayload);
 
       if (!$this->isValid($payload, ['channel', 'subscriber', 'action']) || !array_key_exists($subscriberId = $payload['subscriber'], $this->subscribers)) {
-        echo "It should not be printed!\n";
         return;
       }
 
