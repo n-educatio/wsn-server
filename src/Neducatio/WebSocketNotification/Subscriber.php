@@ -120,6 +120,14 @@ class Subscriber
   }
 
   /**
+   * Clear all granted channels
+   */
+  public function clearChannels()
+  {
+    $this->grantedChannels = [];
+  }
+
+  /**
    * Answers whether $channelName is granted
    *
    * @param string $channelName
