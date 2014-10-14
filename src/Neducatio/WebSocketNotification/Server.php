@@ -52,7 +52,6 @@ class Server implements WampServerInterface
       /**
        * @var Subscriber
        */
-      $this->f = $connection;
       $subscriber = $connection->Subscriber = $connection->Session->get('wsn_server_subscriber');
       $subscriber->setConnection($connection);
       $this->subscribers[(string) $subscriber] = $subscriber;
