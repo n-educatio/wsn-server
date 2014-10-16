@@ -39,7 +39,7 @@ class Subscriber
     $this->grantedChannels = $grantedChannels;
 
     if (is_null($grantedChannels)) {
-      $this->grantedChannels = [];
+      $this->clearChannels();
     }
   }
 
@@ -124,7 +124,7 @@ class Subscriber
    */
   public function clearChannels()
   {
-    $this->grantedChannels = [];
+    $this->grantedChannels = [$this->getExclusiveChannel(), $this->getManagementChannel()];
   }
 
   /**
@@ -137,6 +137,26 @@ class Subscriber
   public function isChannelGranted($channelName)
   {
     return in_array($channelName, $this->grantedChannels);
+  }
+
+  /**
+   * Get exclusive channel name
+   *
+   * @return string
+   */
+  public function getExclusiveChannel()
+  {
+    return sprintf('channel_%d', $this->id);
+  }
+
+  /**
+   * Get exclusive management channel name
+   *
+   * @return string
+   */
+  public function getManagementChannel()
+  {
+    return sprintf('%s_management', $this->getExclusiveChannel());
   }
 
   /**

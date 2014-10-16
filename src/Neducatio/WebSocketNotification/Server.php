@@ -180,15 +180,21 @@ class Server implements WampServerInterface
         return;
       }
 
+      /**
+       * @var Subscriber
+       */
       $subscriber = $this->subscribers[$subscriberId];
 
       if (Subscriber::CHANNEL_REVOKE === ($action = $payload['action'])) {
+        $subscriber->revokeChannel($payload['channel']);
         $this->logger->log('INFO', sprintf('channel %s has been revoked from connection #%s', $payload['channel'], $subscriber->getConnection()->resourceId));
         $this->channelManager->onUnsubscribe($subscriber->getConnection(), $payload['channel']);
+        $this->channels[$subscriber->getManagementChannel()]->broadcast(Common\JSON::encode(['action' => 'unsubscribe', 'channel' => $payload['channel']]));
       }
       elseif (Subscriber::CHANNEL_GRANT) {
+        $subscriber->grantChannel($payload['channel']);
         $this->logger->log('INFO', sprintf('channel %s has been granted to connect #%s', $payload['channel'], $subscriber->getConnection()->resourceId));
-        $this->channelManager->onSubscribe($subscriber->getConnection(), $payload['channel']);
+        $this->channels[$subscriber->getManagementChannel()]->broadcast(Common\JSON::encode(['action' => 'subscribe', 'channel' => $payload['channel']]));
       }
 
     } catch (\InvalidArgumentException $ex) {
