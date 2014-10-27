@@ -66,7 +66,7 @@ class Server extends Command
         InputOption::VALUE_OPTIONAL
       )
       ->addOption(
-        'websocket-port',
+        'websocket_port',
         'w',
         InputOption::VALUE_OPTIONAL
       );
@@ -89,7 +89,7 @@ class Server extends Command
     $managementSock->on('message', [$webSocketNotificationServer, 'channelManagement']);
 
     $socketServer = new SocketServer($loop);
-    $socketServer->listen((int) $configuration['websocket-port'], '0.0.0.0');
+    $socketServer->listen((int) $configuration['websocket_port'], '0.0.0.0');
 
     $wampServer = new WampServer($webSocketNotificationServer);
 
@@ -106,7 +106,7 @@ class Server extends Command
 
     $output->writeln(sprintf("[%s][INFO]\tmessage socket <info>%s</info>", date('Y-d-m H:i:s'), $notificationSockAddr));
     $output->writeln(sprintf("[%s][INFO]\tmanagement socket <info>%s</info>", date('Y-d-m H:i:s'), $managementSockAddr));
-    $output->writeln(sprintf("[%s][INFO]\tweb socket server is listening on <info>%s</info>", date('Y-d-m H:i:s'), $configuration['websocket-port']));
+    $output->writeln(sprintf("[%s][INFO]\tweb socket server is listening on <info>%s</info>", date('Y-d-m H:i:s'), $configuration['websocket_port']));
     $loop->run();
   }
 
