@@ -53,8 +53,12 @@ class Server implements WampServerInterface
        * @var Subscriber
        */
       $subscriber = $connection->Subscriber = $connection->Session->get('wsn_server_subscriber');
+      if (is_null($subscriber)) {
+        $this->log('ERROR', 'Subscriber not set in session or session empty! Have you run web socket server in the same environment as subscriber ?');
+        die;
+      }
       $subscriber->setConnection($connection);
-      $this->subscribers[(string) $subscriber] = $subscriber;
+      $this->subscribers[(string) $subscriber] = $subscriber;      
     }
   }
 
